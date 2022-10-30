@@ -57,7 +57,7 @@ class MoneyKeeperBot(
             }
 
             CURRENCY_PATTERN.matchEntire(receivedText)?.let { matchResult ->
-                val amount = matchResult.groups[1]!!.value.toDouble()
+                val amount = matchResult.groups[1]!!.value.replace(oldValue = ",", newValue = ".").toDouble()
                 val currencySymbol = matchResult.groups[2]!!.value
                 amountsEntered += CurrencyAmount(
                     currency = Companion.fromSymbol(currencySymbol),
