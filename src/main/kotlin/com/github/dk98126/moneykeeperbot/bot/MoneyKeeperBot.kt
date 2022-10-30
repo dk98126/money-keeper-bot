@@ -1,6 +1,8 @@
 package com.github.dk98126.moneykeeperbot.bot
 
-import com.github.dk98126.moneykeeperbot.money.RubleConverter
+import com.github.dk98126.moneykeeperbot.money.CurrencyConverter
+import com.github.dk98126.moneykeeperbot.money.currency.Currency.*
+import com.github.dk98126.moneykeeperbot.money.currency.CurrencyAmount
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
@@ -15,20 +17,18 @@ class MoneyKeeperBot(
     private val token: String,
     @Value("\${bot.username}")
     private val username: String,
-    private val rubleConverter: RubleConverter,
+    private val currencyConverter: CurrencyConverter,
 ) : TelegramLongPollingBot() {
 
     private val CURRENCY_PATTERN = "(\\d+[.,]?\\d+)([₽$€₺])".toRegex()
-
-    private val mustEscapeChars = "_*[]()~`>#+-=|{}.!"
 
     override fun getBotToken(): String = token
 
     override fun getBotUsername(): String = username
 
-    private val availableCurrencies = linkedSetOf("₽", "$", "€", "₺")
+    private val availableCurrencies = linkedSetOf(RUB, USD, EUR, TRY)
 
-    private val amountsEntered = mutableListOf<Pair<Double, String>>()
+    private val amountsEntered = mutableListOf<CurrencyAmount>()
 
     override fun onUpdateReceived(update: Update) {
 
@@ -58,10 +58,13 @@ class MoneyKeeperBot(
 
             CURRENCY_PATTERN.matchEntire(receivedText)?.let { matchResult ->
                 val amount = matchResult.groups[1]!!.value.toDouble()
-                val currency = matchResult.groups[2]!!.value
-                amountsEntered += amount to currency
+                val currencySymbol = matchResult.groups[2]!!.value
+                amountsEntered += CurrencyAmount(
+                    currency = Companion.fromSymbol(currencySymbol),
+                    value = amount
+                )
 
-                textToSend = "Добавлено ${amount.format()}$currency"
+                textToSend = "Добавлено ${amount.format()}$currencySymbol"
             }
 
             if (receivedText == "/reset") {
@@ -70,23 +73,23 @@ class MoneyKeeperBot(
             }
 
             if (receivedText == "/sum") {
-                val amountsToRubles = amountsEntered.map {
-                    val rublesEquivalent = rubleConverter.convert(
-                        amount = it.first,
-                        currencySymbol = it.second
+                val base = RUB
+                val convertedAmountsPairs = amountsEntered.map { fromAmount ->
+                    val toAmount = currencyConverter.convert(
+                        fromAmount,
+                        RUB
                     )
-                    it to rublesEquivalent
+                    fromAmount to toAmount
                 }
-                textToSend = amountsToRubles.joinToString(separator = "\n") {
-                    "${it.first.first.format()}${it.first.second} -> ${it.second.format()}₽"
+                textToSend = convertedAmountsPairs.joinToString(separator = "\n") {
+                    "${it.first.value.format()}${it.first.currency} -> ${it.second.value.format()}${it.second.currency}"
                 }
                     .plus("\n")
                     .plus(
-                        "Всего: ${amountsToRubles.sumOf { it.second }.format()}₽"
+                        "Всего: ${convertedAmountsPairs.sumOf { it.second.value }.format()}$base"
                     )
             }
 
-//            mustEscapeChars.forEach { char -> textToSend = textToSend.replace("$char", "\\$char") }
             message.text = textToSend
 
 
@@ -101,4 +104,4 @@ class MoneyKeeperBot(
 
 }
 
-fun Double.format(digits: Int = 2) = "%.${digits}f".format(this)
+private fun Double.format(digits: Int = 1) = "%.${digits}f".format(this)
