@@ -20,7 +20,7 @@ class MoneyKeeperBot(
     private val currencyConverter: CurrencyConverter,
 ) : TelegramLongPollingBot() {
 
-    private val CURRENCY_PATTERN = "(\\d+[.,]?\\d+)([₽$€₺])".toRegex()
+    private val CURRENCY_PATTERN = "(\\d*?[.,]?\\d+)([₽$€₺])".toRegex()
 
     override fun getBotToken(): String = token
 
