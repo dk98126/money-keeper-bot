@@ -37,6 +37,8 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
-springBoot {
-    mainClass.set("com.github.dk98126.moneykeeperbot.MoneyKeeperBotApplication")
+tasks.withType<Jar> {
+    manifest {
+        attributes["Main-Class"] = "com.github.dk98126.moneykeeperbot.MoneyKeeperBotApplicationKt"
+    }
 }
