@@ -1,6 +1,7 @@
 package com.github.dk98126.moneykeeperbot.bot
 
 import com.github.dk98126.moneykeeperbot.money.CurrencyConverter
+import com.github.dk98126.moneykeeperbot.money.RatesHolder
 import com.github.dk98126.moneykeeperbot.money.currency.Currency.*
 import com.github.dk98126.moneykeeperbot.money.currency.CurrencyAmount
 import org.springframework.beans.factory.annotation.Value
@@ -9,6 +10,8 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException
+import java.time.LocalDateTime
+import java.time.ZonedDateTime
 
 
 @Component
@@ -18,6 +21,7 @@ class MoneyKeeperBot(
     @Value("\${bot.username}")
     private val username: String,
     private val currencyConverter: CurrencyConverter,
+    private val ratesHolder: RatesHolder,
 ) : TelegramLongPollingBot() {
 
     private val CURRENCY_PATTERN = "(\\d*?[.,]?\\d+)([₽$€₺])(.{0,32}?)".toRegex()
@@ -96,8 +100,9 @@ class MoneyKeeperBot(
                 }
                     .plus("\n")
                     .plus(
-                        "Всего: ${convertedAmountsPairs.sumOf { it.second.value }.format()}$base"
+                        "Всего: ${convertedAmountsPairs.sumOf { it.second.value }.format()}$base\n"
                     )
+                    .plus("Курс на ${ratesHolder.getLastUpdated()}")
             }
 
             message.text = textToSend

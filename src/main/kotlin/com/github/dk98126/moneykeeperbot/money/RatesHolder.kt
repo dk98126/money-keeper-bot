@@ -6,10 +6,13 @@ import com.github.dk98126.moneykeeperbot.money.currency.CurrencyRates
 import org.apache.http.client.utils.URIBuilder
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestTemplate
 import org.springframework.web.client.getForEntity
 import java.lang.IllegalArgumentException
+import java.time.Instant
+import java.time.LocalDateTime
 import java.util.concurrent.ConcurrentHashMap
 import javax.annotation.PostConstruct
 
@@ -22,12 +25,19 @@ class RatesHolder(
     private val log = LoggerFactory.getLogger(RatesHolder::class.java)
 
     private val currencyToRates = ConcurrentHashMap<Currency, CurrencyRates>()
+
+    private lateinit var instant: Instant
     fun getRatesFor(currency: Currency): CurrencyRates =
         currencyToRates[currency] ?: throw IllegalArgumentException("Неизвестная валюта $currency")
 
-    //    @Scheduled(fixedRate = 600000)
+    fun getLastUpdated(): Instant {
+        return instant
+    }
+
+    @Scheduled(cron = "0 * * * *")
     @PostConstruct
     private fun updateRates() {
+        instant = Instant.now()
         for (base in Currency.values()) {
             val others = listOf(*Currency.values()) - base
 
@@ -47,7 +57,6 @@ class RatesHolder(
         }
 
         log.info("Rates updated: $currencyToRates")
-
     }
 }
 
