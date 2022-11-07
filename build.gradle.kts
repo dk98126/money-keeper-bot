@@ -39,6 +39,6 @@ tasks.withType<Test> {
 
 tasks.withType<Jar> {
     manifest {
-        attributes["Main-Class"] = "com.github.dk98126.moneykeeperbot.MoneyKeeperBotApplication.kt"
+        attributes["Main-Class"] = "com.github.dk98126.moneykeeperbot.MoneyKeeperBotApplication"
     }
 }
