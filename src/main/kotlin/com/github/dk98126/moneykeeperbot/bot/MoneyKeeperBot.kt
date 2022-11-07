@@ -20,7 +20,7 @@ class MoneyKeeperBot(
     private val currencyConverter: CurrencyConverter,
 ) : TelegramLongPollingBot() {
 
-    private val CURRENCY_PATTERN = "(\\d*?[.,]?\\d+)([₽$€₺])".toRegex()
+    private val CURRENCY_PATTERN = "(\\d*?[.,]?\\d+)([₽$€₺])(.{0,32}?)".toRegex()
 
     override fun getBotToken(): String = token
 
@@ -28,7 +28,7 @@ class MoneyKeeperBot(
 
     private val availableCurrencies = linkedSetOf(RUB, USD, EUR, TRY)
 
-    private val amountsEntered = mutableListOf<CurrencyAmount>()
+    private val amountsEnteredWithComments = mutableListOf<Pair<CurrencyAmount, String?>>()
 
     override fun onUpdateReceived(update: Update) {
 
@@ -47,42 +47,52 @@ class MoneyKeeperBot(
                 textToSend = """
                     Вводи валюту в следующих форматах:
                     
-                    1000$
-                    555€
-                    46.7₺
+                    Добавь
+                    1000$ в банке
+                    
+                    Добавь
+                    555€ в кошельке
+                    
+                    Добавь
+                    46.7₺ на карте
+                    
+                    Добавь
+                    55,47₽
+                    
+                    Можно отправить сразу несколько волют в одном сообщении (каждую с новой строки):
+                    Добавь
+                    1000$ в банке
+                    555€ в кошельке
+                    46.7₺ на карте
                     55,47₽
                     
                     Сейчас подсчет доступен в 4 валютах: $availableCurrencies.
                 """.trimIndent()
             }
 
-            CURRENCY_PATTERN.matchEntire(receivedText)?.let { matchResult ->
-                val amount = matchResult.groups[1]!!.value.replace(oldValue = ",", newValue = ".").toDouble()
-                val currencySymbol = matchResult.groups[2]!!.value
-                amountsEntered += CurrencyAmount(
-                    currency = Companion.fromSymbol(currencySymbol),
-                    value = amount
-                )
-
-                textToSend = "Добавлено ${amount.format()}$currencySymbol"
+            if (receivedText.startsWith("Добавь")) {
+                val splitted = receivedText.split("\n")
+                val currenciesWithComment = splitted.subList(1, splitted.size)
+                textToSend = currenciesWithComment
+                    .map { it.trim() }.joinToString(separator = "\n") { addMoneyIfPossible(it) }
             }
 
             if (receivedText == "/reset") {
-                amountsEntered.clear()
+                amountsEnteredWithComments.clear()
                 textToSend = "Подсчет сброшен."
             }
 
             if (receivedText == "/sum") {
                 val base = RUB
-                val convertedAmountsPairs = amountsEntered.map { fromAmount ->
+                val convertedAmountsPairs = amountsEnteredWithComments.map { fromAmount ->
                     val toAmount = currencyConverter.convert(
-                        fromAmount,
+                        fromAmount.first,
                         RUB
                     )
                     fromAmount to toAmount
                 }
                 textToSend = convertedAmountsPairs.joinToString(separator = "\n") {
-                    "${it.first.value.format()}${it.first.currency} -> ${it.second.value.format()}${it.second.currency}"
+                    "${it.first.first.value.format()}${it.first.first.currency} -> ${it.second.value.format()}${it.second.currency}${it.first.second?.let { comment -> " - $comment" } ?: ""}"
                 }
                     .plus("\n")
                     .plus(
@@ -100,6 +110,20 @@ class MoneyKeeperBot(
                 e.printStackTrace()
             }
         }
+    }
+
+    private fun addMoneyIfPossible(currencyLine: String): String {
+        CURRENCY_PATTERN.matchEntire(currencyLine)?.let { matchResult ->
+            val amount = matchResult.groups[1]!!.value.replace(oldValue = ",", newValue = ".").toDouble()
+            val currencySymbol = matchResult.groups[2]!!.value
+            val comment = matchResult.groups[3]!!.value.trim()
+            amountsEnteredWithComments += CurrencyAmount(
+                currency = Companion.fromSymbol(currencySymbol),
+                value = amount
+            ) to comment
+
+            return "Добавлено ${amount.format()}$currencySymbol - $comment"
+        } ?: return "Не удалось добавить: $currencyLine"
     }
 
 }
