@@ -6,10 +6,10 @@ import com.github.dk98126.moneykeeperbot.money.currency.Currency.*
 import com.github.dk98126.moneykeeperbot.money.currency.CurrencyAmount
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
-import org.telegram.telegrambots.bots.TelegramLongPollingBot
+import org.telegram.telegrambots.bots.TelegramWebhookBot
+import org.telegram.telegrambots.meta.api.methods.BotApiMethod
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.objects.Update
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException
 
 
 @Component
@@ -20,20 +20,21 @@ class MoneyKeeperBot(
     private val username: String,
     private val currencyConverter: CurrencyConverter,
     private val ratesHolder: RatesHolder,
-) : TelegramLongPollingBot() {
+) : TelegramWebhookBot() {
 
     private val CURRENCY_PATTERN = "(\\d*?[.,]?\\d+)([₽$€₺])(.{0,32}?)".toRegex()
-
-    override fun getBotToken(): String = token
-
-    override fun getBotUsername(): String = username
 
     private val availableCurrencies = linkedSetOf(RUB, USD, EUR, TRY)
 
     private val amountsEnteredWithComments = mutableListOf<Pair<CurrencyAmount, String?>>()
 
-    override fun onUpdateReceived(update: Update) {
+    override fun getBotToken(): String = token
 
+    override fun getBotUsername(): String = username
+
+    override fun getBotPath(): String = "https://money-keeper-bot.herokuapp.com/"
+
+    override fun onWebhookUpdateReceived(update: Update): BotApiMethod<*> {
         if (update.hasMessage() && update.message.hasText()) {
             val message = SendMessage()
             message.chatId = update.message.chatId.toString()
@@ -107,11 +108,9 @@ class MoneyKeeperBot(
 
 
 
-            try {
-                execute(message) // Call method to send the message
-            } catch (e: TelegramApiException) {
-                e.printStackTrace()
-            }
+            return message
+        } else {
+            throw RuntimeException("No text been provided in update")
         }
     }
 
