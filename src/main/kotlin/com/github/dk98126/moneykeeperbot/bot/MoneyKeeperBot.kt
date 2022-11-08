@@ -10,8 +10,6 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException
-import java.time.LocalDateTime
-import java.time.ZonedDateTime
 
 
 @Component
@@ -44,10 +42,10 @@ class MoneyKeeperBot(
 
             var textToSend: String = """
                 Привет! Я умею считать твои накопления и конвертировать их в базовую валюту.
-                Напиши /calculate, чтобы начать расчет.
+                Напиши /examples, чтобы увидеть примеры.
             """.trimIndent()
 
-            if (receivedText == "/calculate") {
+            if (receivedText == "/examples") {
                 textToSend = """
                     Вводи валюту в следующих форматах:
                     
